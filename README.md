@@ -1,2 +1,2 @@
 # arduino_kit_projects
-Repo with beginner projects of the arduino starter kit.
+Some beginner-friendly projects using the Arduino Starter Kit
