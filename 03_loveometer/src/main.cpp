@@ -1,14 +1,22 @@
 #include <Arduino.h>
 
 const int sensorPin = A0;
-const float baselineTemp = 26.0;
+const float baselineTemp = 24.0;
+const float deltaTemp = 2.0;
+const unsigned ledPins[] = {2, 3, 4, 5};
+const int nTempLEDs = sizeof(ledPins) / sizeof(int);
+
+float computeVoltage(int sensorVal);
+float computeTempFromVolt(float voltage);
+
+void updateTemperatureLEDs(float temperature, int nLEDs);
 
 void setup() {
   Serial.begin(9600);
 
-  for (int pinNumber = 2; pinNumber < 5; pinNumber++) {
-    pinMode(pinNumber, OUTPUT);
-    digitalWrite(pinNumber, LOW);
+  for (int i = 0; i < nTempLEDs; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], LOW);
   }
 }
 
@@ -17,32 +25,37 @@ void loop() {
   Serial.print("Sensor: ");
   Serial.print(sensorVal);
 
-  // ADC value (0 to 1024) to voltage (0.0 to 5.0V)
-  float voltage = (sensorVal / 1024.0) * 5.0;
+  float voltage = computeVoltage(sensorVal);
   Serial.print(", Volt: ");
   Serial.print(voltage);
-  Serial.print(", Degree C: ");
 
-  // TMP36 has an output scale factor of 10 mV/°C, 10 mV change indicates 1°C change
-  float temperature = (voltage - .5) *  100.0;
+  float temperature = computeTempFromVolt(voltage);
+  Serial.print(", Degree C: ");
   Serial.println(temperature);
 
-  if (temperature < baselineTemp + 2.0){
-    digitalWrite(2, LOW);
-    digitalWrite(3, LOW);
-    digitalWrite(4, LOW);
-  } else if (temperature  >= baselineTemp + 2.0 && temperature < baselineTemp + 4.0) {
-    digitalWrite(2, HIGH);
-    digitalWrite(3, LOW);
-    digitalWrite(4, LOW);
-  } else if (temperature >= baselineTemp + 4.0 && temperature < baselineTemp + 6.0) {
-    digitalWrite(2, HIGH);
-    digitalWrite(3, HIGH);
-    digitalWrite(4, LOW);
-  } else if (temperature >= baselineTemp + 6.0) {
-    digitalWrite(2, HIGH);
-    digitalWrite(3, HIGH);
-    digitalWrite(4, HIGH);
-  }
+  updateTemperatureLEDs(temperature, nTempLEDs);
   delay(1);
+}
+
+float computeVoltage(int sensor_value) {
+  // ADC value (0 to 1024) to voltage (0.0 to 5.0V)
+  return (sensor_value / 1024.0) * 5.0;
+}
+
+float computeTempFromVolt(float voltage) {
+  // TMP36 scale factor: 10mV/°C
+  return (voltage - .5) * 100.0;
+}
+
+void updateTemperatureLEDs(float temperature, int nLEDs) {
+  int numLEDsOn = (temperature - baselineTemp) / deltaTemp;
+  numLEDsOn = constrain(numLEDsOn, 0, nLEDs);
+
+  for (int i = 0; i < nLEDs; i++) {
+    if (i < numLEDsOn) {
+      digitalWrite(ledPins[i], HIGH);
+    } else {
+      digitalWrite(ledPins[i], LOW);
+    }
+  }
 }
